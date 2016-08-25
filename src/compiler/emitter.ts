@@ -7716,21 +7716,54 @@ const _super = (function (geti, seti) {
                     result = (result ? result + "\" + ' ' + \"" : "") + escapeString(part);
                 }
 
-                if (result) {
-                    // Replace entities like &nbsp;
-                    result = result.replace(/&(\w+);/g, function(s: any, m: string) {
-                        if (entities[m] !== undefined) {
-                            const ch = String.fromCharCode(entities[m]);
-                            // &quot; needs to be escaped
-                            return ch === '"' ? "\\\"" : ch;
-                        }
-                        else {
-                            return s;
-                        }
-                    });
-                }
+                return result && applyReactHtmlEntities(result);
+            }
 
-                return result;
+            // Replace entities like &nbsp;
+            //todo: more docs
+            function applyReactHtmlEntities(result: string) {
+                debugger;
+                return result.replace(
+                    /&((#((\d+)|x([\da-fA-F]+)))|(\w+));/g,
+                    //(s: string, hash: string, x: string, m: string) => { //TODO:NAMES
+                    (s, _all, _number, _digitses, decimal, hex, word) => {
+                    if (decimal) {
+                        return String.fromCharCode(parseInt(decimal, 10));
+                    }
+                    else if (hex) {
+                        return String.fromCharCode(parseInt(hex, 16));
+                    }
+                    else {
+                        Debug.assert(word); //kill
+                        const ch = entities[word];
+                        return ch ? (ch === CharacterCodes.doubleQuote ? '\\"' : String.fromCharCode(ch)) : s;
+                    }
+
+
+                    /*if (hash) {
+                        // Replace entities like &#xdeadbeef
+                        const hexMatch = /x([\da-fA-F]+)/.exec(m);
+                        if (hexMatch) {
+                            const [_, hexDigits] = hexMatch;
+                            return String.fromCharCode(parseInt(hexDigits, 16));
+                        }
+
+                        // Replace entities like &#123
+                        if (/\d+/.test(m)) {
+                            return String.fromCharCode(parseInt(m, 10));
+                        }
+                    }
+                    else if (entities[m] !== undefined) {
+                        const ch = String.fromCharCode(entities[m]);
+                        // &quot; needs to be escaped
+                        return ch === '"' ? "\\\"" : ch;
+                    }
+                    else {
+                        //Don't replace.
+                        return s;
+                    }
+                    */
+                });
             }
 
             function isJsxChildEmittable(child: JsxChild): boolean  {
