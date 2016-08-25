@@ -30,7 +30,7 @@ namespace ts.server {
 
     interface ConfigFileConversionResult {
         success: boolean;
-        errors?: Diagnostic[];
+        configFileErrors?: Diagnostic[];
 
         projectOptions?: ProjectOptions;
     }
@@ -659,7 +659,7 @@ namespace ts.server {
 
             const configObj = parseConfigFileTextToJson(configFilename, this.host.readFile(configFilename));
             if (configObj.error) {
-                return { success: false, errors: [configObj.error] };
+                return { success: false, configFileErrors: [configObj.error] };
             }
 
             const parsedCommandLine = parseJsonConfigFileContent(
@@ -672,12 +672,12 @@ namespace ts.server {
             Debug.assert(!!parsedCommandLine.fileNames);
 
             if (parsedCommandLine.errors && (parsedCommandLine.errors.length > 0)) {
-                return { success: false, errors: parsedCommandLine.errors };
+                return { success: false, configFileErrors: parsedCommandLine.errors };
             }
 
             if (parsedCommandLine.fileNames.length === 0) {
                 const error = createCompilerDiagnostic(Diagnostics.The_config_file_0_found_doesn_t_contain_any_source_files, configFilename);
-                return { success: false, errors: [error] };
+                return { success: false, configFileErrors: [error] };
             }
 
             const projectOptions: ProjectOptions = {
@@ -777,14 +777,14 @@ namespace ts.server {
             if (!conversionResult.success) {
                 // open project with no files and set errors on the project
                 const project = this.createAndAddConfiguredProject(configFileName, { files: [], compilerOptions: {} }, clientFileName);
-                project.setProjectErrors(conversionResult.errors);
-                return { success: false, errors: conversionResult.errors };
+                project.setProjectErrors(conversionResult.configFileErrors);
+                return { success: false, errors: conversionResult.configFileErrors };
             }
             const project = this.createAndAddConfiguredProject(configFileName, conversionResult.projectOptions, clientFileName);
             return { success: true, project, errors: project.getProjectErrors() };
         }
 
-        private updateNonInferredProject<T>(project: ExternalProject | ConfiguredProject, newUncheckedFiles: T[], propertyReader: FilePropertyReader<T>, newOptions: CompilerOptions, newTypingOptions: TypingOptions, compileOnSave: boolean) {
+        private updateNonInferredProject<T>(project: ExternalProject | ConfiguredProject, newUncheckedFiles: T[], propertyReader: FilePropertyReader<T>, newOptions: CompilerOptions, newTypingOptions: TypingOptions, compileOnSave: boolean, configFileErrors: Diagnostic[]) {
             const oldRootScriptInfos = project.getRootScriptInfos();
             const newRootScriptInfos: ScriptInfo[] = [];
             const newRootScriptInfoMap: NormalizedPathMap<ScriptInfo> = createNormalizedPathMap<ScriptInfo>();
@@ -848,7 +848,7 @@ namespace ts.server {
             project.setCompilerOptions(newOptions);
             (<ExternalProject | ConfiguredProject>project).setTypingOptions(newTypingOptions);
             project.compileOnSaveEnabled = !!compileOnSave;
-            project.setProjectErrors(projectErrors);
+            project.setProjectErrors(concatenate(configFileErrors, projectErrors));
 
             project.updateGraph();
         }
@@ -860,10 +860,11 @@ namespace ts.server {
                 return;
             }
 
-            const { success, projectOptions, errors } = this.convertConfigFileContentToProjectOptions(project.configFileName);
-            project.setProjectErrors(errors);
+            const { success, projectOptions, configFileErrors } = this.convertConfigFileContentToProjectOptions(project.configFileName);
             if (!success) {
-                return errors;
+                // reset project settings to default
+                this.updateNonInferredProject(project, [], fileNamePropertyReader, {}, {}, /*compileOnSave*/false, configFileErrors);
+                return configFileErrors;
             }
 
             if (this.exceededTotalSizeLimitForNonTsFiles(projectOptions.compilerOptions, projectOptions.files, fileNamePropertyReader)) {
@@ -880,7 +881,7 @@ namespace ts.server {
                     project.enableLanguageService();
                 }
                 this.watchConfigDirectoryForProject(project, projectOptions);
-                this.updateNonInferredProject(project, projectOptions.files, fileNamePropertyReader, projectOptions.compilerOptions, projectOptions.typingOptions, projectOptions.compileOnSave);
+                this.updateNonInferredProject(project, projectOptions.files, fileNamePropertyReader, projectOptions.compilerOptions, projectOptions.typingOptions, projectOptions.compileOnSave, configFileErrors);
             }
         }
 
@@ -1150,7 +1151,7 @@ namespace ts.server {
         openExternalProject(proj: protocol.ExternalProject): void {
             const externalProject = this.findExternalProjectByProjectName(proj.projectFileName);
             if (externalProject) {
-                this.updateNonInferredProject(externalProject, proj.rootFiles, externalFilePropertyReader, proj.options, proj.typingOptions, proj.options.compileOnSave);
+                this.updateNonInferredProject(externalProject, proj.rootFiles, externalFilePropertyReader, proj.options, proj.typingOptions, proj.options.compileOnSave, /*configFileErrors*/ undefined);
                 return;
             }
 

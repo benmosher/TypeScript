@@ -2201,7 +2201,7 @@ namespace ts {
             checkProjectErrors(projectService.synchronizeProjectList([])[0], []);
         });
 
-        it("configured projects - diagnostics for corrupted config", () => {
+        it("configured projects - diagnostics for corrupted config 1", () => {
             const file1 = {
                 path: "/a/b/app.ts",
                 content: ""
@@ -2236,6 +2236,44 @@ namespace ts {
                 const configuredProject = forEach(projectService.synchronizeProjectList([]), f => f.info.projectName === corruptedConfig.path && f);
                 assert.isTrue(configuredProject !== undefined, "should find configured project");
                 checkProjectErrors(configuredProject, []);
+            }
+        });
+
+        it("configured projects - diagnostics for corrupted config 2", () => {
+            const file1 = {
+                path: "/a/b/app.ts",
+                content: ""
+            };
+            const file2 = {
+                path: "/a/b/lib.ts",
+                content: ""
+            };
+            const correctConfig = {
+                path: "/a/b/tsconfig.json",
+                content: JSON.stringify({ files: [file1, file2].map(f => getBaseFileName(f.path)) })
+            };
+            const corruptedConfig = {
+                path: correctConfig.path,
+                content: correctConfig.content.substr(1)
+            };
+            const host = createServerHost([file1, file2, correctConfig]);
+            const projectService = createProjectService(host);
+
+            projectService.openClientFile(file1.path);
+            {
+                projectService.checkNumberOfProjects({ configuredProjects: 1 });
+                const configuredProject = forEach(projectService.synchronizeProjectList([]), f => f.info.projectName === corruptedConfig.path && f);
+                assert.isTrue(configuredProject !== undefined, "should find configured project");
+                checkProjectErrors(configuredProject, []);
+            }
+            // fix config and trigger watcher
+            host.reloadFS([file1, file2, corruptedConfig]);
+            host.triggerFileWatcherCallback(corruptedConfig.path, /*false*/);
+            {
+                projectService.checkNumberOfProjects({ inferredProjects: 1, configuredProjects: 1 });
+                const configuredProject = forEach(projectService.synchronizeProjectList([]), f => f.info.projectName === corruptedConfig.path && f);
+                assert.isTrue(configuredProject !== undefined, "should find configured project");
+                checkProjectErrors(configuredProject, [`Failed to parse file \'/a/b/tsconfig.json\': Unexpected token : in JSON at position 7.`]);
             }
         });
     });
