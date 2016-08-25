@@ -2127,7 +2127,7 @@ namespace ts {
                 rootFiles: toExternalFiles([file1.path, file2.path])
             });
 
-            projectService.checkNumberOfProjects({externalProjects: 1});
+            projectService.checkNumberOfProjects({ externalProjects: 1 });
             {
                 const knownProjects = projectService.synchronizeProjectList([]);
                 assert.equal(knownProjects.length, 1, "expected 1 project in the list");
@@ -2144,7 +2144,7 @@ namespace ts {
                 options: {},
                 rootFiles: toExternalFiles([file1.path, file2.path])
             });
-            projectService.checkNumberOfProjects({externalProjects: 1});
+            projectService.checkNumberOfProjects({ externalProjects: 1 });
             {
                 const knownProjects = projectService.synchronizeProjectList([]);
                 assert.equal(knownProjects.length, 1, "expected 1 project in the list");
@@ -2152,6 +2152,6 @@ namespace ts {
                 const errorsCount = knownProjects[0].projectErrors && knownProjects[0].projectErrors.length;
                 assert.equal(errorsCount, undefined, `expected no errors in the list, got ${errorsCount}`);
             }
-        })
+        });
     });
 }

@@ -781,7 +781,7 @@ namespace ts.server {
             const oldRootScriptInfos = project.getRootScriptInfos();
             const newRootScriptInfos: ScriptInfo[] = [];
             const newRootScriptInfoMap: NormalizedPathMap<ScriptInfo> = createNormalizedPathMap<ScriptInfo>();
-            
+
             let projectErrors: Diagnostic[];
             let rootFilesChanged = false;
             for (const f of newUncheckedFiles) {
