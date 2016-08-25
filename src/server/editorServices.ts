@@ -73,6 +73,10 @@ namespace ts.server {
         }
     }
 
+    function createFileNotFoundDiagnostic(fileName: string) {
+        return createCompilerDiagnostic(Diagnostics.File_0_not_found, fileName);
+    }
+
     /**
      * TODO: enforce invariants:
      *  - script info can be never migrate to state - root file in inferred project, this is only a starting point
@@ -760,7 +764,7 @@ namespace ts.server {
                     project.addRoot(info);
                 }
                 else {
-                    (errors || (errors = [])).push(createCompilerDiagnostic(Diagnostics.File_0_not_found, rootFilename));
+                    (errors || (errors = [])).push(createFileNotFoundDiagnostic(rootFilename));
                 }
             }
             project.setProjectErrors(errors);
@@ -771,6 +775,9 @@ namespace ts.server {
         private openConfigFile(configFileName: NormalizedPath, clientFileName?: string): OpenConfigFileResult {
             const conversionResult = this.convertConfigFileContentToProjectOptions(configFileName);
             if (!conversionResult.success) {
+                // open project with no files and set errors on the project
+                const project = this.createAndAddConfiguredProject(configFileName, { files: [], compilerOptions: {} }, clientFileName);
+                project.setProjectErrors(conversionResult.errors);
                 return { success: false, errors: conversionResult.errors };
             }
             const project = this.createAndAddConfiguredProject(configFileName, conversionResult.projectOptions, clientFileName);
@@ -787,7 +794,7 @@ namespace ts.server {
             for (const f of newUncheckedFiles) {
                 const newRootFile = propertyReader.getFileName(f);
                 if (!this.host.fileExists(newRootFile)) {
-                    (projectErrors || (projectErrors = [])).push(createCompilerDiagnostic(Diagnostics.File_0_not_found, newRootFile));
+                    (projectErrors || (projectErrors = [])).push(createFileNotFoundDiagnostic(newRootFile));
                     continue;
                 }
                 const normalizedPath = toNormalizedPath(newRootFile);
