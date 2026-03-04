@@ -8,7 +8,7 @@ var tty = require("tty")
   , Base = mocha.reporters.Base
   , color = Base.color
   , cursor = Base.cursor
-  , ms = require("mocha/lib/ms");
+  , ms = require("ms");
 
 var isatty = tty.isatty(1) && tty.isatty(2);
 var tapRangePattern = /^(\d+)\.\.(\d+)(?:$|\r\n?|\n)/;

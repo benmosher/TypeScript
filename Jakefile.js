@@ -7,6 +7,11 @@ var child_process = require("child_process");
 var fold = require("travis-fold");
 var runTestsInParallel = require("./scripts/mocha-parallel").runTestsInParallel;
 
+// Polyfill jake.createExec for newer jake versions where it's not directly exposed
+if (typeof jake !== 'undefined' && !jake.createExec) {
+    jake.createExec = require("jake/lib/utils").createExec;
+}
+
 // Variables
 var compilerDirectory = "src/compiler/";
 var servicesDirectory = "src/services/";
